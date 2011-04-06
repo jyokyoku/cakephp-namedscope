@@ -55,8 +55,8 @@ class NamedScopeTest extends CakeTestCase {
 		unset($this->User);
 		ClassRegistry::flush();
 	}
- 
-    function testFindScoped() {    
+
+    function testQueryScoped() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active' => array(
                 'conditions' => array(
@@ -64,10 +64,10 @@ class NamedScopeTest extends CakeTestCase {
                 )
             )
         ));
-        $r = $this->User->find('active');
+        $r = $this->User->find('all', array('named' => 'active'));
         $this->assertTrue(Set::matches('/User[id=2]', $r));
         $this->assertFalse(Set::matches('/User[id=3]', $r));
-        
+
         $this->User->Behaviors->attach('NamedScope', array(
             'active' => array(
                 'conditions' => array(
@@ -76,13 +76,13 @@ class NamedScopeTest extends CakeTestCase {
                 'limit' => 2
             )
         ));
-        $r = $this->User->find('active');
+        $r = $this->User->find('all', array('named' => 'active'));
         $this->assertTrue(Set::matches('/User[id=3]', $r));
         $this->assertTrue(Set::matches('/User[id=4]', $r));
         $this->assertEqual(count($r), 2);
     }
-    
-    function testFindScopedOverwrite() {    
+
+    function testQueryScopedOverwrite() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active' => array(
                 'conditions' => array(
@@ -91,24 +91,25 @@ class NamedScopeTest extends CakeTestCase {
                 'limit' => 2
             )
         ));
-        
-        $r = $this->User->find('active', array(
+
+        $r = $this->User->find('all', array(
+            'named' => 'active',
             'limit' => 1
         ));
         $this->assertTrue(Set::matches('/User[id=3]', $r));
         $this->assertEqual(count($r), 1);
     }
-    
-    function testFindScopedWithoutSettings() {
+
+    function testQueryScopedWithoutSettings() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active'
         ));
-        $r = $this->User->find('active');
+        $r = $this->User->find('all', array('named' => 'active'));
         $this->assertTrue(Set::matches('/User[id=5]', $r));
         $this->assertEqual(count($r), 5);
     }
 
-    function testMethodScoped() {   
+    function testMethodScoped() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active' => array(
                 'conditions' => array(
@@ -116,13 +117,13 @@ class NamedScopeTest extends CakeTestCase {
                 )
             )
         ));
-        $r = $this->User->active('all');
+        $r = $this->User->findActive('all');
         $this->assertTrue(Set::matches('/User[id=1]', $r));
         $this->assertTrue(Set::matches('/User[id=2]', $r));
         $this->assertEqual(count($r), 2);
     }
-    
-    function testMethodScopedOverwrite() {    
+
+    function testMethodScopedOverwrite() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active' => array(
                 'conditions' => array(
@@ -131,21 +132,21 @@ class NamedScopeTest extends CakeTestCase {
                 'limit' => 2
             )
         ));
-        
-        $r = $this->User->active('all', array(
+
+        $r = $this->User->findActive('all', array(
             'limit' => 1
         ));
         $this->assertTrue(Set::matches('/User[id=3]', $r));
         $this->assertEqual(count($r), 1);
     }
-    
+
     function testMethodScopedWithoutSettings() {
         $this->User->Behaviors->attach('NamedScope', array(
             'active'
         ));
-        $r = $this->User->active('all');
+        $r = $this->User->findActive('all');
         $this->assertTrue(Set::matches('/User[id=5]', $r));
         $this->assertEqual(count($r), 5);
     }
-    
+
 }

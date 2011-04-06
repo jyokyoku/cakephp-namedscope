@@ -31,18 +31,17 @@
  *
  *  Then call this in my User controller:
  *
- *      $active_users = $this->User->active('all');
+ *      $active_users = $this->User->findActive('all');
  *
  *  or this:
  *
- *      $active_users = $this->User->find('active');
+ *      $active_users = $this->User->find('type', array('named' => 'active'));
  *
  *  You can even pass in the standard find params to both calls.
  *
  */
 class NamedScopeBehavior extends ModelBehavior
 {
-
     /**
      * An array of settings set by the $actsAs property
      */
@@ -56,40 +55,37 @@ class NamedScopeBehavior extends ModelBehavior
      */
     function setup(&$model, $settings = array())
     {
-        $settings = (array)$settings;
-        foreach ($settings as $named => $options) {
-            if (!is_array($options)) {
-                unset($settings[$named]);
-                $settings[$options] = array();
-                $named = $options;
-            }
-            $model->_findMethods[$named] = true;
-            $this->mapMethods['/find' . $named . '/'] = '_findScoped';
-            $this->mapMethods['/' . $named . '/'] = '_methodScoped';
+        $scopes = array();
+
+        foreach (Set::normalize($settings) as $named => $options) {
+            $named = strtolower($named);
+            $scopes[$named] = is_array($options) ? $options : array();
+
+            $this->mapMethods['/find' . $named . '/'] = '_find';
         }
-        $this->settings[$model->alias] = $settings;
+
+        $this->settings[$model->alias] = $scopes;
     }
 
     /**
-     * Defines a find method as found in the _findMethods property of the model, assigning the
-     * scope properties passed to $actsAs. This allows you to call Model::find('method')
+     * Before find
      *
-     * @param object $model The model object
-     * @param string $method The name of the _findMethod called
-     * @param string $state Whether the method is called before or after the find call
-     * @param array $params The find params
-     * @param array $results The find results (only passed when $state == after)
-     *
-     * @return array The find params if $state == before, else the find results
+     * @see libs/model/ModelBehavior::beforeFind()
      */
-    function _findScoped(&$model, $method, $state, $params = array(), $results = array())
+    function beforeFind(&$model, $query)
     {
-        if ($state == 'before') {
-            preg_match('/^_find(\w+)/', $method, $matches);
-            return $this->_mergeParams($model, $params, $matches[1]);
-        } elseif ($state == 'after') {
-			return $results;
+        if (!isset($query['named'])) {
+            return true;
         }
+
+        $named = strtolower($query['named']);
+        unset($query['named']);
+
+        if (!empty($named) && isset($this->settings[$model->alias][$named])) {
+            $query = $this->_mergeParams($model, $query, $named);
+        }
+
+        return $query;
     }
 
     /**
@@ -97,18 +93,21 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @param object $model The model object
      * @param string $method The method name
-     * @param[..] Copied from the Model::find() method.
+     * @param string $type The find type
+     * @param array $query Array of find queries
      *
      * @return array Find results
      */
-    function _methodScoped(&$model, $method, $conditions = null, $fields = array(), $order = null, $recursive = null)
+    function _find(&$model, $method, $type = null, $query = array())
     {
-		if (!is_string($conditions) || (is_string($conditions) && !array_key_exists($conditions, $model->_findMethods))) {
-			$conditions = 'first';
-			$fields = array_merge(compact('conditions', 'fields', 'order', 'recursive'), array('limit' => 1));
-		}
-        $fields = $this->_mergeParams($model, $fields, $method);
-        return $model->dispatchMethod('find', array($conditions, $fields));
+        $method = preg_replace('/^find/', '', $method);
+        $query = $this->_mergeParams($model, $query, $method);
+
+        if (isset($query['named'])) {
+            unset($query['named']);
+        }
+
+        return $model->dispatchMethod('find', array($type, $query));
     }
 
     /**
@@ -117,13 +116,13 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @param object $model The model object
      * @param array $params The params passed to the find call
-     * @param string $method Method name called
+     * @param string $named The named key
      *
      * @return array Merged params
      */
-    function _mergeParams(&$model, $params, $method)
+    function _mergeParams(&$model, $params, $named)
     {
-        foreach ($this->settings[$model->alias][$method] as $key => $value) {
+        foreach ($this->settings[$model->alias][strtolower($named)] as $key => $value) {
             if (is_array($value)) {
                 $params[$key] = isset($params[$key]) ? Set::merge($params[$key], $value) : $value;
             } else {
@@ -134,5 +133,4 @@ class NamedScopeBehavior extends ModelBehavior
         }
         return $params;
     }
-
 }
