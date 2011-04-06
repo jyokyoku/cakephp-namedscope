@@ -54,7 +54,7 @@ class NamedScopeBehavior extends ModelBehavior
      * @param object $model The Model object
      * @param array $settings Array of scope properties
      */
-    function setup($model, $settings = array())
+    function setup(&$model, $settings = array())
     {
         $settings = (array)$settings;
         foreach ($settings as $named => $options) {
@@ -82,7 +82,7 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @return array The find params if $state == before, else the find results
      */
-    function _findScoped($model, $method, $state, $params = array(), $results = array())
+    function _findScoped(&$model, $method, $state, $params = array(), $results = array())
     {
         if ($state == 'before') {
             preg_match('/^_find(\w+)/', $method, $matches);
@@ -101,7 +101,7 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @return array Find results
      */
-    function _methodScoped($model, $method, $conditions = null, $fields = array(), $order = null, $recursive = null)
+    function _methodScoped(&$model, $method, $conditions = null, $fields = array(), $order = null, $recursive = null)
     {
 		if (!is_string($conditions) || (is_string($conditions) && !array_key_exists($conditions, $model->_findMethods))) {
 			$conditions = 'first';
@@ -121,7 +121,7 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @return array Merged params
      */
-    function _mergeParams($model, $params, $method)
+    function _mergeParams(&$model, $params, $method)
     {
         foreach ($this->settings[$model->alias][$method] as $key => $value) {
             if (is_array($value)) {
