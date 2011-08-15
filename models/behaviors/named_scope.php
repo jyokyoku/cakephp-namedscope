@@ -103,6 +103,10 @@ class NamedScopeBehavior extends ModelBehavior
         $method = preg_replace('/^find/', '', $method);
         $query = $this->_mergeParams($model, $query, $method);
 
+        if (!$type) {
+            $type = 'first';
+        }
+
         if (isset($query['named'])) {
             unset($query['named']);
         }
