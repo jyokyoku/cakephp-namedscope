@@ -20,32 +20,39 @@
  *  this in my model:
  *
  *      var $actsAs = array(
- *          'NamedScope' => array(
- *              'active' => array(
- *                  'conditions' => array(
- *                      'User.is_active' => true
- *                  )
+ *          'NamedScope.NamedScope'
+ *      );
+ *
+ *      var $namedScope = array(
+ *          'active' => array(
+ *              'conditions' => array(
+ *                  'User.is_active' => true
  *              )
+ *          ),
+ *          'limit' => array(
+ *              'limit' => 10
  *          )
  *      );
  *
  *  Then call this in my User controller:
  *
  *      $active_users = $this->User->findActive('all');
+ *      $active_users = $this->User->findActiveAndLimit('all');
  *
  *  or this:
  *
- *      $active_users = $this->User->find('type', array('named' => 'active'));
+ *      $active_users = $this->User->find('all', array('namedScope' => 'active'));
+ *      $active_users = $this->User->find('all', array('namedScope' => array('active', 'limit')));
  *
  *  You can even pass in the standard find params to both calls.
  *
  */
 class NamedScopeBehavior extends ModelBehavior
 {
-    /**
-     * An array of settings set by the $actsAs property
-     */
-    var $settings = array();
+    var $_defaultSettings = array(
+        'varName' => 'namedScope',
+        'queryKey' => 'namedScope'
+    );
 
     /**
      * Instantiates the behavior and sets the magic methods
@@ -55,16 +62,18 @@ class NamedScopeBehavior extends ModelBehavior
      */
     function setup(&$model, $settings = array())
     {
-        $scopes = array();
+        $this->settings[$model->alias] = Set::merge($this->_defaultSettings, $settings);
 
-        foreach (Set::normalize($settings) as $named => $options) {
-            $named = strtolower($named);
-            $scopes[$named] = is_array($options) ? $options : array();
+        if (empty($model->{$this->settings[$model->alias]['varName']})) {
+            $model->{$this->settings[$model->alias]['varName']} = array();
 
-            $this->mapMethods['/find' . $named . '/'] = '_find';
+        } else {
+            $model->{$this->settings[$model->alias]['varName']} = Set::filter(
+                Set::normalize($model->{$this->settings[$model->alias]['varName']})
+            );
         }
 
-        $this->settings[$model->alias] = $scopes;
+        $this->mapMethods['/find.+/'] = '_find';
     }
 
     /**
@@ -74,15 +83,15 @@ class NamedScopeBehavior extends ModelBehavior
      */
     function beforeFind(&$model, $query)
     {
-        if (!isset($query['named'])) {
+        if (!isset($query[$this->settings[$model->alias]['queryKey']])) {
             return true;
         }
 
-        $named = strtolower($query['named']);
-        unset($query['named']);
+        $scopeKeys = (array)$query[$this->settings[$model->alias]['queryKey']];
+        unset($query[$this->settings[$model->alias]['queryKey']]);
 
-        if (!empty($named) && isset($this->settings[$model->alias][$named])) {
-            $query = $this->_mergeParams($model, $query, $named);
+        foreach ($scopeKeys as $scopeKey) {
+            $query = $this->_mergeParams($model, $query, $scopeKey);
         }
 
         return $query;
@@ -101,17 +110,44 @@ class NamedScopeBehavior extends ModelBehavior
     function _find(&$model, $method, $type = null, $query = array())
     {
         $method = preg_replace('/^find/', '', $method);
-        $query = $this->_mergeParams($model, $query, $method);
+        $scopeNames = array_keys($model->{$this->settings[$model->alias]['varName']});
+        arsort($scopeNames);
 
-        if (!$type) {
-            $type = 'first';
+        $useScopes = array();
+
+        if (preg_match_all('/(' . implode('|', $scopeNames) . ')(and)?/i', $method, $matches)) {
+            array_pop($matches[2]);
+            $operators = Set::filter($matches[2]);
+
+            if ($operators === false) {
+                $operators = array();
+            }
+
+            if (count($operators) == count($matches[1]) - 1) {
+                $useScopes = array_merge($useScopes, $matches[1]);
+            }
         }
 
-        if (isset($query['named'])) {
-            unset($query['named']);
+        if (isset($query[$this->settings[$model->alias]['queryKey']])) {
+            $useScopes = array_merge($useScopes, (array)$query[$this->settings[$model->alias]['queryKey']]);
+            unset($query[$this->settings[$model->alias]['queryKey']]);
         }
 
-        return $model->dispatchMethod('find', array($type, $query));
+        if ($useScopes) {
+            $useScopes = array_unique($useScopes);
+
+            foreach ($useScopes as $useScope) {
+                $query = $this->_mergeParams($model, $query, $useScope);
+            }
+
+            if (!$type) {
+            	$type = 'first';
+            }
+
+            return $model->dispatchMethod('find', array($type, $query));
+        }
+
+        return array('unhandled');
     }
 
     /**
@@ -120,13 +156,22 @@ class NamedScopeBehavior extends ModelBehavior
      *
      * @param object $model The model object
      * @param array $params The params passed to the find call
-     * @param string $named The named key
+     * @param string $scopeName The scope name
      *
      * @return array Merged params
      */
-    function _mergeParams(&$model, $params, $named)
+    function _mergeParams(&$model, $params, $scope)
     {
-        foreach ($this->settings[$model->alias][strtolower($named)] as $key => $value) {
+        $scopes = array_combine(
+            array_map('strtolower', array_keys($model->{$this->settings[$model->alias]['varName']})),
+            $model->{$this->settings[$model->alias]['varName']}
+        );
+
+        if (empty($scopes[$scope])) {
+            return $params;
+        }
+
+        foreach ($scopes[$scope] as $key => $value) {
             if (is_array($value)) {
                 $params[$key] = isset($params[$key]) ? Set::merge($params[$key], $value) : $value;
             } else {
