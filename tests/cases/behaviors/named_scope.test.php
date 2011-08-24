@@ -141,7 +141,7 @@ class NamedScopeTest extends CakeTestCase {
             )
         );
 
-        $r = $this->User->findActiveAndLimit('all', array('limit' => 1));
+        $r = $this->User->findActive('all', array('limit' => 1));
         $this->assertTrue(Set::matches('/User[id=3]', $r));
         $this->assertEqual(count($r), 1);
     }

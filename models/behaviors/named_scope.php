@@ -123,7 +123,10 @@ class NamedScopeBehavior extends ModelBehavior
                 $operators = array();
             }
 
-            if (count($operators) == count($matches[1]) - 1) {
+            if (
+                count($operators) == count($matches[1]) - 1
+                && strlen(implode('', $operators)) + strlen(implode('', $matches[1])) == strlen($method)
+            ) {
                 $useScopes = array_merge($useScopes, $matches[1]);
             }
         }
@@ -141,7 +144,7 @@ class NamedScopeBehavior extends ModelBehavior
             }
 
             if (!$type) {
-            	$type = 'first';
+                $type = 'first';
             }
 
             return $model->dispatchMethod('find', array($type, $query));
