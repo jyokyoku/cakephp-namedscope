@@ -131,7 +131,7 @@ class NamedScopeBehavior extends ModelBehavior
             }
         }
 
-        if (isset($query[$this->settings[$model->alias]['queryKey']])) {
+        if (is_array($query) && isset($query[$this->settings[$model->alias]['queryKey']])) {
             $useScopes = array_merge($useScopes, (array)$query[$this->settings[$model->alias]['queryKey']]);
             unset($query[$this->settings[$model->alias]['queryKey']]);
         }
