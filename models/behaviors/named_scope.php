@@ -165,6 +165,7 @@ class NamedScopeBehavior extends ModelBehavior
      */
     function _mergeParams(&$model, $params, $scope)
     {
+        $scope = strtolower($scope);
         $scopes = array_combine(
             array_map('strtolower', array_keys($model->{$this->settings[$model->alias]['varName']})),
             $model->{$this->settings[$model->alias]['varName']}
