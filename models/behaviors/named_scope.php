@@ -68,9 +68,7 @@ class NamedScopeBehavior extends ModelBehavior
             $model->{$this->settings[$model->alias]['varName']} = array();
 
         } else {
-            $model->{$this->settings[$model->alias]['varName']} = Set::filter(
-                Set::normalize($model->{$this->settings[$model->alias]['varName']})
-            );
+            $model->{$this->settings[$model->alias]['varName']} = Set::normalize($model->{$this->settings[$model->alias]['varName']});
         }
 
         $this->mapMethods['/find.+/'] = '_find';
