@@ -175,7 +175,10 @@ class NamedScopeBehavior extends ModelBehavior
 
         foreach ($scopes[$scope] as $key => $value) {
             if (is_array($value)) {
-                $params[$key] = isset($params[$key]) ? Set::merge($params[$key], $value) : $value;
+                $params[$key] = isset($params[$key])
+                              ? Set::numeric(array_keys($value)) ? array_merge($params[$key], $value)
+                                                                 : Set::merge($params[$key], $value)
+                              : $value;
             } else {
                 if (!isset($params[$key]) || empty($params[$key])) {
                     $params[$key] = $value;
