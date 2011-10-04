@@ -117,8 +117,8 @@ class NamedScopeBehavior extends ModelBehavior
             if (isset($results[0][0]['count'])) {
                 $results[0][0]['count'] = $model->getAffectedRows();
 
-            } elseif (isset($results[0][$this->alias]['count'])) {
-                $results[0][$this->alias]['count'] = $model->getAffectedRows();
+            } elseif (isset($results[0][$model->alias]['count'])) {
+                $results[0][$model->alias]['count'] = $model->getAffectedRows();
             }
         }
 
