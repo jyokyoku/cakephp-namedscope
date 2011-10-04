@@ -54,6 +54,12 @@ class NamedScopeBehavior extends ModelBehavior
         'queryKey' => 'namedScope'
     );
 
+    var $_defaultRuntime = array(
+        'hasGroup' => false,
+    );
+
+    var $runtime = array();
+
     /**
      * Instantiates the behavior and sets the magic methods
      *
@@ -63,6 +69,7 @@ class NamedScopeBehavior extends ModelBehavior
     function setup(&$model, $settings = array())
     {
         $this->settings[$model->alias] = Set::merge($this->_defaultSettings, $settings);
+        $this->runtime[$model->alias] = $this->_defaultRuntime;
 
         if (empty($model->{$this->settings[$model->alias]['varName']})) {
             $model->{$this->settings[$model->alias]['varName']} = array();
@@ -92,7 +99,30 @@ class NamedScopeBehavior extends ModelBehavior
             $query = $this->_mergeParams($model, $query, $scopeKey);
         }
 
+        if (isset($query['group'])) {
+            $this->runtime[$model->alias]['hasGroup'] = true;
+        }
+
         return $query;
+    }
+
+    /**
+     * After find
+     *
+     * @see libs/model/ModelBehavior::afterFind()
+     */
+    function afterFind(&$model, $results, $primary = false)
+    {
+        if ($primary && $model->findQueryType == 'count' && $this->runtime[$model->alias]['hasGroup']) {
+            if (isset($results[0][0]['count'])) {
+                $results[0][0]['count'] = $model->getAffectedRows();
+
+            } elseif (isset($results[0][$this->alias]['count'])) {
+                $results[0][$this->alias]['count'] = $model->getAffectedRows();
+            }
+        }
+
+        return $results;
     }
 
     /**
