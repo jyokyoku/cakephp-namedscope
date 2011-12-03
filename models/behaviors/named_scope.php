@@ -217,4 +217,13 @@ class NamedScopeBehavior extends ModelBehavior
         }
         return $params;
     }
+
+    function getNamedScope(&$model, $scope, $query = array())
+    {
+        foreach ((array)$scope as $_scope) {
+            $query = $this->_mergeParams($model, $query, $scope);
+        }
+
+        return $query;
+    }
 }
