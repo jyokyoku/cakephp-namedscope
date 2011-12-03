@@ -78,7 +78,7 @@ class NamedScopeBehavior extends ModelBehavior
             $model->{$this->settings[$model->alias]['varName']} = Set::normalize($model->{$this->settings[$model->alias]['varName']});
         }
 
-        $this->mapMethods['/find.+/'] = '_find';
+        $this->mapMethods['/^find.+/'] = '_find';
     }
 
     /**
@@ -194,10 +194,12 @@ class NamedScopeBehavior extends ModelBehavior
     function _mergeParams(&$model, $params, $scope)
     {
         $scope = strtolower($scope);
-        $scopes = array_combine(
-            array_map('strtolower', array_keys($model->{$this->settings[$model->alias]['varName']})),
-            $model->{$this->settings[$model->alias]['varName']}
-        );
+        $scopes = !empty($model->{$this->settings[$model->alias]['varName']})
+                ? array_combine(
+                      array_map('strtolower', array_keys($model->{$this->settings[$model->alias]['varName']})),
+                      $model->{$this->settings[$model->alias]['varName']}
+                  )
+                : array();
 
         if (empty($scopes[$scope])) {
             return $params;
